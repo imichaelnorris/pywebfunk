@@ -15,11 +15,14 @@ class Ids(dict):
         self[a] = b
 
 class Component(object):
+    tag = ''
     '''
 
     Components that are defined with "close" in their attributes will be written like <property />, instead of normal tags that are <property></property>
     '''
     def __init__(self, **attributes):
+        #now I'm starting to feel that every component should be a Container as
+        #well and should be __init__(self, *children, **attributes)
         self.attributes = {}
         for i in attributes:
             if attributes[i] != None:
@@ -34,18 +37,28 @@ class Component(object):
         self.applicators = []
 
     def __str__(self):
-        temp =  "<{}".format(self.tag)
-        for i in self.attributes:
-            if i not in ['tag', 'closer', 'text']:
-                temp = temp + ' {}="{}"'.format(i,self.attributes[i])
-        temp = temp + ("\>" if 'close' in self.attributes else ">")
-        if 'close' in self.attributes:
+        if self.tag != '':
+            temp =  "<{}".format(self.tag)
+            for i in self.attributes:
+                if i not in ['tag', 'close', 'text']:
+                    temp = temp + ' {}="{}"'.format(i,self.attributes[i])
+            temp = temp + (">" if 'close' in self.attributes else ">")
+            if 'close' in self.attributes:
+                return temp
+            elif 'text' in self.attributes:
+                temp = temp + "{}</{}>".format(self.attributes['text'], self.tag)
+            else:
+                return temp + "</{}>".format(self.tag)
             return temp
-        elif 'text' in self.attributes:
-            temp = temp + "{}</{}>".format(self.attributes['text'], self.tag)
         else:
-            return temp + "</{}>".format(self.tag)
-        return temp
+            temp = self.attributes['text'] if 'text' in self.attributes else ''
+            if type(temp) != str:
+                temp = temp.__str__()
+
+            if type(self) in Container.__subclasses__():
+                temp += '\n'.join([i.__str__() for i in self])
+            return temp
+
             
 class document(list):
     def __init__(self, *lst):
@@ -161,24 +174,43 @@ class Div(Container, Component):
         Container.__init__(self, *elements)
 
     def __str__(self):
-        self.attributes['text'] = '\n'.join([i.__str__() for i in self])
+        if 'text' not in self.attributes: self.attributes['text'] = ''
+        self.attributes['text'] += '\n'+'\n'.join([i.__str__() for i in self])+'\n'
         
         #return super(Div, self).__str__()
         return Component.__str__(self)
 
+class Text(Component, Container):
+    def __init__(self, text, *children, **kwargs):
+        Container.__init__(self, *children)
+        Component.__init__(self, **kwargs)
+        self.attributes['text'] = text
+
 class A(Container):
     tag = "a"
 
-class Applicator(object):
-    def __init__(self, *x, **args):
-        '''An Applicator applies itself on a list of unnamed objects x, and can be given properties "args" like a Component'''
-        for i in x:
-            if x in Components.__subclasses__():
-                x.applicators.append(
+class Input(Component):
+    def __init__(self, **args):
+        Component.__init__(self, **args)
+        self.attributes['close'] = True
+    tag = "input"
+
+class Img(Component):
+    tag = "img"
+
+class Form(Div):
+    tag = 'form'
+
+#class Applicator(object):
+#    def __init__(self, *x, **args):
+#        '''An Applicator applies itself on a list of unnamed objects x, and can be given properties "args" like a Component'''
+#        for i in x:
+#            if x in Components.__subclasses__():
+#                x.applicators.append(
 
 class Center(object):
     def __init__(self, *args, **args2):
-
+        pass
         #raise Exception("error, 1999 called, and they want their website back.\n{}".format('http://html5hub.com/centering-all-the-directions'))
 #center = Center
 
